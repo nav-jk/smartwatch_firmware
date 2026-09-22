@@ -111,6 +111,8 @@ void app_main(void)
 
     TickType_t last_wake = xTaskGetTickCount();
 
+    menu_init();
+
     while (1) {
         // fb_copy_wallpaper();
 
@@ -129,10 +131,19 @@ void app_main(void)
         // );
 
         fb_clear(0x0000);
-        menu_init();
-        fb_flush(panel_handle);
+        menu_render();
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        // menu_navigate();
+        // fb_flush(panel_handle);
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+        while(1){
+            fb_clear(0x0000);
+            menu_select();
+            fb_flush(panel_handle);
+            vTaskDelay(pdMS_TO_TICKS(10000));
+        }
+
+        
 
     }
 }

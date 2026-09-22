@@ -3,7 +3,7 @@
 
 #include "../include/framebuffer.h"
 #include "../include/clock_module.h"
-#include "../include/wallpaper.h"
+#include "../assets/wallpaper/wallpaper.h"
 
 static const char *TAG = "framebuffer";
 
