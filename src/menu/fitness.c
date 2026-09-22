@@ -5,7 +5,6 @@
 
 void menu_fitness_init(void){
     fb_clear(0x0000);
-    const char* text = "Not Done";
-    draw_text_box(20, 100, 200, 60, "HELLO WORLD THIS IS A TEST", 0xFFFF, 2);   
+    draw_text_box(20, 100, 200, 60, "Fitness", 0xFFFF, 2);   
     return;
 }

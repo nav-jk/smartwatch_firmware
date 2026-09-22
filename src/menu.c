@@ -2,7 +2,6 @@
 #include "../include/graphics.h"
 #include "../include/icons.h"
 #include "../include/framebuffer.h"
-#include "../include/menu/fitness.h"
 
 #define HIGHLIGHT_PAD   3
 #define HIGHLIGHT_COLOR 0x07FF // cyan
@@ -46,33 +45,33 @@ void menu_select(void)
             menu_fitness_init();
             break;
 
-        // case MENU_PHONE:
-        //     menu_phone_init();
-        //     break;
+        case MENU_PHONE:
+            menu_phone_init();
+            break;
 
-        // case MENU_INTERNATIONAL_TIME:
-        //     menu_intrn_time_init();
-        //     break;
+        case MENU_INTERNATIONAL_TIME:
+            menu_intrn_time_init();
+            break;
 
-        // case MENU_WALLET:
-        //     menu_wallet_init();
-        //     break;
+        case MENU_WALLET:
+            menu_wallet_init();
+            break;
 
-        // case MENU_CALENDAR:
-        //     menu_calendar_init();
-        //     break;
+        case MENU_CALENDAR:
+            menu_calendar_init();
+            break;
 
-        // case MENU_WEATHER:
-        //     menu_weather_init();
-        //     break;
+        case MENU_WEATHER:
+            menu_weather_init();
+            break;
 
-        // case MENU_WORKOUT:
-        //     menu_workout_init();
-        //     break;
+        case MENU_WORKOUT:
+            menu_workout_init();
+            break;
 
-        // case MENU_SETTINGS:
-        //     menu_settings_init();
-        //     break;
+        case MENU_SETTINGS:
+            menu_settings_init();
+            break;
 
         default:
             break;

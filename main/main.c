@@ -113,37 +113,42 @@ void app_main(void)
 
     menu_init();
 
-    while (1) {
-        // fb_copy_wallpaper();
+while (1) {
 
-        // draw_ring(&rim, 4);
-        // draw_dial_ticks();
-        // draw_clock(&cur_clock);
-        // draw_circle(&c);
+    fb_copy_wallpaper();
 
-        // fb_flush(panel_handle);
+    draw_ring(&rim, 4);
+    draw_dial_ticks();
+    draw_clock(&cur_clock);
+    draw_circle(&c);
 
-        // clock_advance(&cur_clock);
+    fb_flush(panel_handle);
+    while(1){
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        while(1){
+            clock_advance(&cur_clock);
+        }
+    break;
+    }
 
-        // vTaskDelayUntil(
-        //     &last_wake,
-        //     pdMS_TO_TICKS(1000)
-        // );
+    for (int i = 0; i < MENU_COUNT; i++) {
 
+        // Show menu with current item highlighted
         fb_clear(0x0000);
         menu_render();
+        fb_flush(panel_handle);
+
         vTaskDelay(pdMS_TO_TICKS(1000));
-        // menu_navigate();
-        // fb_flush(panel_handle);
 
-        while(1){
-            fb_clear(0x0000);
-            menu_select();
-            fb_flush(panel_handle);
-            vTaskDelay(pdMS_TO_TICKS(10000));
-        }
+        // Enter selected menu item
+        fb_clear(0x0000);
+        menu_select();
+        fb_flush(panel_handle);
 
-        
+        vTaskDelay(pdMS_TO_TICKS(1000));
 
+        // Move to next item
+        menu_navigate();
     }
+}
 }
