@@ -2,7 +2,7 @@
 #include "esp_log.h"
 
 #include "../include/framebuffer.h"
-#include "../include/clock.h"
+#include "../include/clock_module.h"
 #include "../include/wallpaper.h"
 
 static const char *TAG = "framebuffer";

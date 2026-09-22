@@ -11,18 +11,11 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_gc9a01.h"
-#include "../include/clock.h"
+#include "../include/clock_module.h"
 #include "../include/framebuffer.h"
 
-#define PIN_SCLK    22
-#define PIN_MOSI    21
-#define PIN_CS      2
-#define PIN_DC      4
-#define PIN_RST     23
-#define PIN_BL      -1
-
-#define LCD_SPI_HOST     SPI2_HOST
-#define LCD_PIXEL_CLK_HZ (40 * 1000 * 1000)
+#include "../include/specs.h"
+#include "../include/menu.h"
 
 static const char *TAG = "gc9a01_demo";
 
@@ -110,7 +103,7 @@ void app_main(void)
         .color = 0x0000
     };
 
-    clock cur_clock = {
+    wall_clock cur_clock = {
         .seconds = 0,
         .minutes = 0,
         .hour = 0
@@ -119,20 +112,27 @@ void app_main(void)
     TickType_t last_wake = xTaskGetTickCount();
 
     while (1) {
-        fb_copy_wallpaper();
+        // fb_copy_wallpaper();
 
-        draw_ring(&rim, 4);
-        draw_dial_ticks();
-        draw_clock(&cur_clock);
-        draw_circle(&c);
+        // draw_ring(&rim, 4);
+        // draw_dial_ticks();
+        // draw_clock(&cur_clock);
+        // draw_circle(&c);
 
+        // fb_flush(panel_handle);
+
+        // clock_advance(&cur_clock);
+
+        // vTaskDelayUntil(
+        //     &last_wake,
+        //     pdMS_TO_TICKS(1000)
+        // );
+
+        fb_clear(0x0000);
+        menu_init();
         fb_flush(panel_handle);
 
-        clock_advance(&cur_clock);
+        vTaskDelay(pdMS_TO_TICKS(100));
 
-        vTaskDelayUntil(
-            &last_wake,
-            pdMS_TO_TICKS(1000)
-        );
     }
 }

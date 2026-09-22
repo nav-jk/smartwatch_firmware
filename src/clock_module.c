@@ -1,101 +1,9 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "clock.h"
+#include "../include/clock_module.h"
+#include "../include/graphics.h"
 
-void draw_circle(circle *c)
-{
-    for (int y = -c->radius; y <= c->radius; y++) {
-        for (int x = -c->radius; x <= c->radius; x++) {
-            if (x * x + y * y <= c->radius * c->radius) {
-                fb_set(
-                    c->cen.cx + x,
-                    c->cen.cy + y,
-                    c->color
-                );
-            }
-        }
-    }
-}
-
-// unfilled ring, thickness (r_outer - r_inner), for borders/bezels
-void draw_ring(circle *c, int thickness)
-{
-    int r_out = c->radius;
-    int r_in = c->radius - thickness;
-
-    for (int y = -r_out; y <= r_out; y++) {
-        for (int x = -r_out; x <= r_out; x++) {
-            int d2 = x * x + y * y;
-            if (d2 <= r_out * r_out && d2 >= r_in * r_in) {
-                fb_set(
-                    c->cen.cx + x,
-                    c->cen.cy + y,
-                    c->color
-                );
-            }
-        }
-    }
-}
-
-void draw_line(
-    int x0,
-    int y0,
-    int x1,
-    int y1,
-    uint16_t color
-)
-{
-    int dx = abs(x1 - x0);
-    int sx = x0 < x1 ? 1 : -1;
-
-    int dy = -abs(y1 - y0);
-    int sy = y0 < y1 ? 1 : -1;
-
-    int err = dx + dy;
-
-    while (1) {
-        fb_set(x0, y0, color);
-
-        if (x0 == x1 && y0 == y1)
-            break;
-
-        int e2 = 2 * err;
-
-        if (e2 >= dy) {
-            err += dy;
-            x0 += sx;
-        }
-
-        if (e2 <= dx) {
-            err += dx;
-            y0 += sy;
-        }
-    }
-}
-
-void draw_line_centre(
-    int len,
-    float angle,
-    uint16_t color
-)
-{
-    float rad = angle * 3.14159265f / 180.0f;
-
-    int cx = LCD_H_RES / 2;
-    int cy = LCD_V_RES / 2;
-
-    int x1 = cx + (int)(len * sinf(rad));
-    int y1 = cy - (int)(len * cosf(rad));
-
-    draw_line(
-        cx,
-        cy,
-        x1,
-        y1,
-        color
-    );
-}
 
 // short radial mark, offset from centre by r0 out to r1, at given angle
 void draw_tick(int r0, int r1, float angle, uint16_t color)
@@ -162,7 +70,7 @@ void draw_hand(int len, int back, int width, float angle, uint16_t color)
     }
 }
 
-void clock_advance(clock *cur_clock)
+void clock_advance(wall_clock *cur_clock)
 {
     cur_clock->seconds++;
 
@@ -181,7 +89,7 @@ void clock_advance(clock *cur_clock)
     }
 }
 
-clock_angles get_clock_angles(clock *cur_clock)
+clock_angles get_clock_angles(wall_clock *cur_clock)
 {
     clock_angles angles;
 
@@ -199,7 +107,7 @@ clock_angles get_clock_angles(clock *cur_clock)
     return angles;
 }
 
-void draw_clock(clock *cur_clock)
+void draw_clock(wall_clock *cur_clock)
 {
     clock_angles angle = get_clock_angles(cur_clock);
     draw_hand(55, 12, 7, angle.hour_angle, COLOR_HOUR);
