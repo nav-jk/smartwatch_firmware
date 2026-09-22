@@ -7,9 +7,9 @@
 #include "graphics.h"
 #include "framebuffer.h"
 
-#define COLOR_HOUR    0x07FF // cyan
-#define COLOR_MINUTE  0xFFFF // white
-#define COLOR_SECOND  0xF800 // red
+#define COLOR_HOUR    0xFD20 // warm gold, matches COLOR_MINUTE/CAP for a uniform metal look
+#define COLOR_MINUTE  0xFD20 // warm gold
+#define COLOR_SECOND  0xF800 // red, kept distinct as a thin sweep hand
 #define COLOR_CAP     0xFD20 // amber
 
 

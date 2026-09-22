@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Usage: python helper.py wallpaper/wallpaper.jpg include/wallpaper.h [--dim 0.7]
-#        python helper.py wallpaper/wallpaper.jpg include/wallpaper.h 
+# Usage: python wallpaper.py ../assets/wallpaper/wallpaper.jpg ../assets/wallpaper/wallpaper.h [--dim 0.7]
+#        python wallpaper.py ../assets/wallpaper/wallpaper.jpg ../assets/wallpaper/wallpaper.h 
 #
 # Crops/resizes the input image to 240x240 (centre-crop to square first,
 # so nothing looks stretched), optionally dims it so clock hands stay
