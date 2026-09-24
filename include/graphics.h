@@ -24,5 +24,6 @@ void draw_line(int x0, int y0, int x1, int y1, uint16_t color);
 void draw_line_centre(int len, float angle, uint16_t color);
 void draw_rect(int x, int y, int w, int h, uint16_t color);
 void draw_rect_outline(int x, int y, int w, int h, uint16_t color);
+void draw_rounded_rect(int x, int y, int w, int h, int r, uint16_t color);
 
 #endif

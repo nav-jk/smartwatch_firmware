@@ -116,3 +116,26 @@ void draw_rect_outline(int x, int y, int w, int h, uint16_t color)
     draw_line(x, y, x, y + h - 1, color);                  // left
     draw_line(x + w - 1, y, x + w - 1, y + h - 1, color);  // right
 }
+
+// filled rounded rectangle, top-left corner at (x, y), corner radius r
+void draw_rounded_rect(int x, int y, int w, int h, int r, uint16_t color)
+{
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+
+    for (int dy = 0; dy < h; dy++) {
+        int inset = 0;
+
+        if (dy < r) {
+            int cy_off = r - 1 - dy;
+            float dx = sqrtf((float)(r * r - cy_off * cy_off));
+            inset = r - (int)dx;
+        } else if (dy >= h - r) {
+            int cy_off = dy - (h - r);
+            float dx = sqrtf((float)(r * r - cy_off * cy_off));
+            inset = r - (int)dx;
+        }
+
+        draw_line(x + inset, y + dy, x + w - 1 - inset, y + dy, color);
+    }
+}

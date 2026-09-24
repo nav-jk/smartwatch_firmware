@@ -20,9 +20,8 @@ void menu_navigate(void)
 
 void menu_render(void)
 {
-    // draw_line(0, 50, 240, 50, 0xFFFF);
-    // draw_line(0, 190, 240, 190, 0xFFFF);
     fb_clear(0x4529);
+
     for (int i = 0; i < ICON_COUNT; i++) {
         draw_icon(&icons[i]);
     }
@@ -71,6 +70,32 @@ void menu_select(void)
 
         case MENU_SETTINGS:
             menu_settings_init();
+            break;
+
+        default:
+            break;
+    }
+}
+
+void menu_app_navigate(void)
+{
+    switch (selected_icon) {
+
+        case MENU_SETTINGS:
+            settings_navigate();
+            break;
+
+        default:
+            break;
+    }
+}
+
+void menu_app_select(void)
+{
+    switch (selected_icon) {
+
+        case MENU_SETTINGS:
+            settings_select();
             break;
 
         default:
