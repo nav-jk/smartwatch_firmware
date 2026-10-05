@@ -1,29 +1,33 @@
-# ESP-IDF build output
+# ESP-IDF
 build/
-sdkconfig
-sdkconfig.old
-sdkconfig.*.old
-dependencies.lock
 managed_components/
 
-# CMake
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-CTestTestfile.cmake
+# SDK config
+sdkconfig
+sdkconfig.old
+sdkconfig.bak
 
-# Editors / IDEs
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# VS Code
 .vscode/
-.idea/
-*.swp
-*.swo
 
-# OS cruft
+# OS
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs and temporary files
 *.log
+*.tmp
+*.swp
+*~
 
-# Generated wallpaper headers (usually large — comment this out if you want it tracked)
-# include/wallpaper.h
+# CMake
+cmake-build-*/
+
+# ESP-IDF dependency lock
+dependencies.lock

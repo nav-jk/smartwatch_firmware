@@ -1,4 +1,5 @@
 dependencies:
-  espressif/esp_lcd_gc9a01: "^1.0.0"
-  idf:
-    version: ">=5.0"
+  idf: ">=5.1"
+  lvgl/lvgl: "^9.3.0"
+  espressif/esp_lvgl_port: "^2.6.0"
+  espressif/esp_lcd_gc9a01: "^2.0.0"
