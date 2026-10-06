@@ -5,6 +5,7 @@ idf_component_register(
         "../src/network.c"
         "../src/watch_ui.c"
         "../src/ui_common.c"
+        "../src/ota.c"
         "../src/menu_calendar.c"
         "../src/menu_fitness.c"
         "../src/menu_phone.c"
@@ -17,4 +18,11 @@ idf_component_register(
     INCLUDE_DIRS
         "."
         "../include"
+    REQUIRES
+        nvs_flash
+        esp_wifi
+        esp_https_ota
+        esp_http_client
+        mbedtls
+        json
 )

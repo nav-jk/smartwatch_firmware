@@ -51,6 +51,16 @@
 #define EDGE_MARGIN   6
 #define FC_ICON       22
 
+/*
+ * Dithered background gradient.
+ * The panel is RGB565, so a plain LVGL gradient shows visible bands. Instead we
+ * pre-render a small 4 x 240 tile with ordered (Bayer) dithering and let LVGL
+ * tile it across the page: smooth to the eye, ~2 KB of RAM, redrawn only when
+ * the weather colour changes.
+ */
+#define GRAD_W  4
+#define GRAD_H  240      /* equals the display height */
+
 /* Big temperature font: uses Montserrat 48 if enabled, else 28 */
 #if defined(LV_FONT_MONTSERRAT_48) && LV_FONT_MONTSERRAT_48
 #define FONT_TEMP     (&lv_font_montserrat_48)
@@ -81,6 +91,11 @@ static lv_obj_t *body;          /* page root, NULL when closed */
 static lv_obj_t *temp_lbl, *cond_lbl, *date_lbl;
 static lv_obj_t *big_icon;
 static lv_obj_t *fc_icon[3], *fc_day[3];
+
+/* Gradient tile (RGB565) shown through a tiled canvas */
+static uint16_t grad_buf[GRAD_W * GRAD_H] __attribute__((aligned(64)));
+static lv_obj_t *grad_canvas;
+static uint32_t grad_top = 0xFFFFFFFF;
 
 static char response_buffer[2048];
 static int response_length;
@@ -137,6 +152,60 @@ static uint32_t weather_bg(int code)
     if (code <= 77) return 0x4F6D8C;   /* snow */
     if (code <= 86) return 0x1B3A6B;   /* showers / snow showers */
     return 0x3E2C66;                   /* storm */
+}
+
+/* ---------- smooth (dithered) gradient ---------- */
+
+/* Renders "top colour -> black" into the tile with 4x4 ordered dithering */
+static void grad_fill(uint32_t top)
+{
+    static const uint8_t bayer[4][4] = {
+        {  0,  8,  2, 10 },
+        { 12,  4, 14,  6 },
+        {  3, 11,  1,  9 },
+        { 15,  7, 13,  5 },
+    };
+
+    const float tr = (float)((top >> 16) & 0xFF);
+    const float tg = (float)((top >> 8) & 0xFF);
+    const float tb = (float)(top & 0xFF);
+
+    for (int y = 0; y < GRAD_H; y++) {
+        /* Half linear, half smoothstep: keeps the top colourful, fades gently */
+        float t = (float)y / (float)(GRAD_H - 1);
+        float f = 0.5f * t + 0.5f * (t * t * (3.0f - 2.0f * t));
+        float k = 1.0f - f;
+
+        float r = tr * k;
+        float g = tg * k;
+        float b = tb * k;
+
+        for (int x = 0; x < GRAD_W; x++) {
+            float th = ((float)bayer[y & 3][x & 3] + 0.5f) / 16.0f;
+
+            int rq = (int)(r * 31.0f / 255.0f + th);
+            int gq = (int)(g * 63.0f / 255.0f + th);
+            int bq = (int)(b * 31.0f / 255.0f + th);
+
+            if (rq > 31) rq = 31;
+            if (gq > 63) gq = 63;
+            if (bq > 31) bq = 31;
+
+            grad_buf[y * GRAD_W + x] = (uint16_t)((rq << 11) | (gq << 5) | bq);
+        }
+    }
+}
+
+/* Re-renders only when the colour actually changed. LVGL lock must be held. */
+static void grad_apply(uint32_t top)
+{
+    if (!grad_canvas) return;
+
+    if (top != grad_top) {
+        grad_top = top;
+        grad_fill(top);
+        lv_obj_invalidate(grad_canvas);
+    }
 }
 
 /* ---------- icon drawing (all LVGL shapes, no image assets) ---------- */
@@ -328,7 +397,7 @@ static void weather_apply(void)
     char buf[16];
     int code = (wx.state == WX_OK) ? wx.code : -1;
 
-    lv_obj_set_style_bg_color(body, lv_color_hex(weather_bg(code)), 0);
+    grad_apply(weather_bg(code));
 
     if (wx.state == WX_OK) {
         snprintf(buf, sizeof(buf), "%.0f", wx.temp);
@@ -449,10 +518,8 @@ static void weather_open(lv_obj_t *page)
 {
     body = page;
 
-    /* Vertical gradient: weather color on top, black at the bottom */
-    lv_obj_set_style_bg_color(page, lv_color_hex(weather_bg(-1)), 0);
-    lv_obj_set_style_bg_grad_color(page, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_bg_grad_dir(page, LV_GRAD_DIR_VER, 0);
+    /* Solid black base; the dithered gradient canvas is layered on top of it */
+    lv_obj_set_style_bg_color(page, lv_color_hex(0x000000), 0);
     lv_obj_set_style_bg_opa(page, LV_OPA_COVER, 0);
     lv_obj_set_scrollbar_mode(page, LV_SCROLLBAR_MODE_OFF);
 
@@ -460,6 +527,17 @@ static void weather_open(lv_obj_t *page)
     int W = lv_obj_get_width(page);
     int H = lv_obj_get_height(page);
     int R = (W < H ? W : H) / 2;
+
+    /* Background: 4 x 240 dithered tile repeated across the page.
+     * Created first so every other widget draws above it. */
+    grad_canvas = lv_canvas_create(page);
+    lv_canvas_set_buffer(grad_canvas, grad_buf, GRAD_W, GRAD_H,
+                         LV_COLOR_FORMAT_RGB565);
+    lv_image_set_inner_align(grad_canvas, LV_IMAGE_ALIGN_TILE);
+    lv_obj_set_size(grad_canvas, W, H);
+    lv_obj_set_pos(grad_canvas, 0, 0);
+    ui_make_inert(grad_canvas);
+    grad_top = 0xFFFFFFFF;                 /* force a fresh render */
 
     /* Big temperature + drawn degree ring (no degree glyph needed) */
     lv_obj_t *row = lv_obj_create(page);
@@ -546,6 +624,7 @@ static void weather_refresh(void)
 static void weather_close(void)
 {
     body = NULL;
+    grad_canvas = NULL;
     temp_lbl = cond_lbl = date_lbl = NULL;
     big_icon = NULL;
     for (int i = 0; i < 3; i++) fc_icon[i] = fc_day[i] = NULL;
