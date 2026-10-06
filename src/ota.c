@@ -1,3 +1,5 @@
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -9,12 +11,12 @@
 #include "esp_http_client.h"
 #include "esp_https_ota.h"
 #include "esp_log.h"
-#include "esp_lvgl_port.h"
 #include "esp_system.h"
 
 #include "cJSON.h"
 
 #include "ota.h"
+#include "settings_update.h"
 #include "ui_common.h"
 
 #define GITHUB_API_URL \
@@ -27,40 +29,13 @@
 
 static const char *TAG = "ota";
 
-static bool running;
-
-static lv_obj_t *status_label;
-static lv_obj_t *progress_bar;
+static volatile bool running;
 
 static char response[16384];
 static int response_length;
 
 static char latest_version[32];
 static char firmware_url[256];
-
-static void ota_set_status(const char *text)
-{
-    if (status_label == NULL) {
-        return;
-    }
-
-    if (lvgl_port_lock(1000)) {
-        ui_set_text(status_label, text);
-        lvgl_port_unlock();
-    }
-}
-
-static void ota_set_progress(int value)
-{
-    if (progress_bar == NULL) {
-        return;
-    }
-
-    if (lvgl_port_lock(1000)) {
-        lv_bar_set_value(progress_bar, value, LV_ANIM_OFF);
-        lvgl_port_unlock();
-    }
-}
 
 static esp_err_t github_event_handler(esp_http_client_event_t *event)
 {
@@ -248,22 +223,29 @@ static bool get_latest_release(void)
     return asset_found;
 }
 
+/* Show a failure on the cloud screen (it returns to Settings by itself). */
+static void ota_fail(const char *msg)
+{
+    settings_update_done(false, msg);
+
+    running = false;
+    vTaskDelete(NULL);
+}
+
 static void ota_task(void *arg)
 {
     (void)arg;
 
     running = true;
 
-    ota_set_status("Checking...");
-    ota_set_progress(0);
+    settings_update_open("Checking...");
+    settings_update_progress(-1);           /* spinning ring */
 
     const esp_app_desc_t *app =
         esp_app_get_description();
 
     if (app == NULL) {
-        ota_set_status("Version error");
-        running = false;
-        vTaskDelete(NULL);
+        ota_fail("Version error");
         return;
     }
 
@@ -274,9 +256,7 @@ static void ota_task(void *arg)
     );
 
     if (!get_latest_release()) {
-        ota_set_status("Update check failed");
-        running = false;
-        vTaskDelete(NULL);
+        ota_fail("Check failed");
         return;
     }
 
@@ -291,24 +271,14 @@ static void ota_task(void *arg)
             app->version
         ) <= 0) {
 
-        ota_set_progress(100);
-        ota_set_status("Up to date");
+        settings_update_done(true, "Up to date");
 
         running = false;
         vTaskDelete(NULL);
         return;
     }
 
-    char status[64];
-
-    snprintf(
-        status,
-        sizeof(status),
-        "Update available\n%s",
-        latest_version
-    );
-
-    ota_set_status(status);
+    settings_update_status("Update found", latest_version);
 
     vTaskDelay(pdMS_TO_TICKS(1000));
 
@@ -338,9 +308,7 @@ static void ota_task(void *arg)
             esp_err_to_name(err)
         );
 
-        ota_set_status("OTA failed");
-        running = false;
-        vTaskDelete(NULL);
+        ota_fail("OTA failed");
         return;
     }
 
@@ -356,14 +324,18 @@ static void ota_task(void *arg)
 
         esp_https_ota_abort(handle);
 
-        ota_set_status("Invalid firmware");
-        running = false;
-        vTaskDelete(NULL);
+        ota_fail("Invalid firmware");
         return;
     }
 
     int image_size =
         esp_https_ota_get_image_size(handle);
+
+    char detail[48];
+    int last_progress = -1;
+
+    settings_update_status("Downloading", latest_version);
+    settings_update_progress(0);
 
     while (true) {
         err = esp_https_ota_perform(handle);
@@ -379,16 +351,21 @@ static void ota_task(void *arg)
                 progress = 100;
             }
 
-            ota_set_progress(progress);
+            /* only touch the UI when the number actually changes */
+            if (progress != last_progress) {
+                last_progress = progress;
 
-            snprintf(
-                status,
-                sizeof(status),
-                "Downloading %d%%",
-                progress
-            );
+                snprintf(
+                    detail,
+                    sizeof(detail),
+                    "%s  %d%%",
+                    latest_version,
+                    progress
+                );
 
-            ota_set_status(status);
+                settings_update_progress(progress);
+                settings_update_status(NULL, detail);
+            }
         }
 
         if (err == ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
@@ -408,9 +385,7 @@ static void ota_task(void *arg)
 
         esp_https_ota_abort(handle);
 
-        ota_set_status("Download failed");
-        running = false;
-        vTaskDelete(NULL);
+        ota_fail("Download failed");
         return;
     }
 
@@ -424,97 +399,32 @@ static void ota_task(void *arg)
             esp_err_to_name(err)
         );
 
-        ota_set_status("Update failed");
-        running = false;
-        vTaskDelete(NULL);
+        ota_fail("Update failed");
         return;
     }
 
-    ota_set_progress(100);
-    ota_set_status("Update complete");
+    settings_update_progress(100);
+    settings_update_done(true, "Restarting...");
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(1500));
 
     esp_restart();
 }
 
+/*
+ * Called by Settings when it opens. The old on-page status label and
+ * progress bar are gone: the cloud update screen now shows all of that.
+ * Behaviour is unchanged otherwise: opening Settings starts a check.
+ */
 void ota_bind_ui(lv_obj_t *page)
 {
-    status_label = ui_label(
-        page,
-        &lv_font_montserrat_14,
-        COL_MUTED,
-        "Checking...",
-        LV_ALIGN_CENTER,
-        0,
-        80
-    );
-
-    lv_obj_set_width(status_label, 180);
-    lv_obj_set_style_text_align(
-        status_label,
-        LV_TEXT_ALIGN_CENTER,
-        0
-    );
-
-    progress_bar = lv_bar_create(page);
-
-    lv_obj_set_size(
-        progress_bar,
-        150,
-        8
-    );
-
-    lv_obj_align(
-        progress_bar,
-        LV_ALIGN_CENTER,
-        0,
-        102
-    );
-
-    lv_obj_set_style_bg_color(
-        progress_bar,
-        COL_TRACK,
-        LV_PART_MAIN
-    );
-
-    lv_obj_set_style_bg_opa(
-        progress_bar,
-        LV_OPA_COVER,
-        LV_PART_MAIN
-    );
-
-    lv_obj_set_style_bg_color(
-        progress_bar,
-        COL_ACCENT,
-        LV_PART_INDICATOR
-    );
-
-    lv_obj_set_style_bg_opa(
-        progress_bar,
-        LV_OPA_COVER,
-        LV_PART_INDICATOR
-    );
-
-    lv_bar_set_range(
-        progress_bar,
-        0,
-        100
-    );
-
-    lv_bar_set_value(
-        progress_bar,
-        0,
-        LV_ANIM_OFF
-    );
+    (void)page;
 
     ota_check();
 }
 
 void ota_unbind_ui(void)
 {
-    status_label = NULL;
-    progress_bar = NULL;
 }
 
 void ota_check(void)
