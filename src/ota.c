@@ -284,9 +284,13 @@ static void ota_task(void *arg)
 
     esp_http_client_config_t http_config = {
         .url = firmware_url,
-        .timeout_ms = 15000,
+        .timeout_ms = 30000,
+        .buffer_size = 8192,
+        .buffer_size_tx = 4096,
         .crt_bundle_attach = esp_crt_bundle_attach,
         .user_agent = "Smartwatch-OTA",
+        .disable_auto_redirect = false,
+        .max_redirection_count = 10,
     };
 
     esp_https_ota_config_t ota_config = {
