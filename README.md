@@ -382,8 +382,3 @@ mbedTLS buffer sizes in `menuconfig`.
 - [Open-Meteo](https://open-meteo.com): weather data, licensed
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); attribution is required
   if you redistribute or publish a product that uses this data
-
-## License
-
-Add your license here (for example MIT or Apache-2.0) and include a `LICENSE` file in
-the repository root.
